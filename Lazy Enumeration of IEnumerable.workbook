@@ -1,0 +1,70 @@
+---
+uti: com.xamarin.workbook
+id: cd8e70ab-3d1b-47a1-9640-1987138a7c91
+title: Lazy Enumeration
+platforms:
+- DotNetCore
+---
+
+```csharp
+// It turns out that ReSharper's "possible multiple enumerations of IEnumerable" warning is there
+// for a good reason
+//
+// aka: why you should SOMETIMES consider declaring an IEnumerable as an IReadOnlyCollection instead, 
+// in particular if the following applies:
+// (1) You're planning on reading from the collection more than once - using IEnumerable, you
+//     will incur the expense of evaluating the expression multiple times (think database reads)
+// (2) ...and especially if you plan on changing the state of any items in the collection - using 
+//     IEnumerable, you will re-evaluate the expression (thus discarding the originasl collection's
+//     contents - along with their mutated states) on subsequent enumerations of the collection.
+//
+// On the other hand, don't lose sight of how useful lazy evaluation is - for example using Linq
+// to SQL, where you might want to append Wheres and OrderBys etc to your base query - these can be
+// appended to the underlying SQL query so that, on evaluation of the Linq expression they can be more
+// efficiently executed on the database server, BEFORE the results are returned to your code.
+//
+// So consider how you might want lazy evaluation up to a point ... until your D/B query has executed,
+// at which point you want to preserve the returned collection intact, for the reasons outlined above.
+
+class Model {
+    public int Id {get; set;}
+    public string Name {get; set;}
+}
+
+// items stores an expression that may later be evaluated to yield some list of Models
+var items = Enumerable.Range(0,1).Select(i => new Model{Name="boring default name"});
+
+foreach(var item in items){
+    Console.WriteLine($"Item {item.Id}'s name is \"{item.Name}\"");
+}
+```
+
+```csharp
+foreach(var item in items){
+    item.Name = "new and exciting name";
+    Console.WriteLine($"Item's new name is \"{item.Name}\"");
+}
+```
+
+```csharp
+foreach(var item in items){
+    //Let's check out our new and exciting names...!?
+    Console.WriteLine($"Item {item.Id}'s new name is \"{item.Name}\"");
+}
+```
+
+```csharp
+// force evaluation of the collection, and store the result - items is now an actual list of Model
+items = items.ToList();
+
+foreach(var item in items){
+    item.Name = "new and exciting name - 2nd attempt";
+    Console.WriteLine($"Item's new name is \"{item.Name}\"");
+}
+```
+
+```csharp
+foreach(var item in items){
+    Console.WriteLine($"Item {item.Id}'s new name is \"{item.Name}\"");
+}
+```
