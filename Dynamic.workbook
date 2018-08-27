@@ -1,0 +1,67 @@
+---
+uti: com.xamarin.workbook
+id: 6c9c2d23-bd5c-479a-a26f-556a64bad325
+title: Dynamic
+platforms:
+- DotNetCore
+---
+
+Some random examples of the use of **dynamic** in C#
+
+Using **`dynamic`** to define a method that is generic for all types of numbers (though not typesafe, so scope for runtime errors if called on inappropriate types)
+
+```csharp
+static dynamic Mean (dynamic x, dynamic y){
+    return (x + y) / 2;
+}
+```
+
+```csharp
+var x = Mean(4, 6);
+```
+
+```csharp
+var y = Mean(4.5, 6.5);
+```
+
+---
+
+\
+Illustration of equivalence between `object` and `dynamic` types.
+---
+
+```csharp
+typeof(object[]) == typeof(dynamic[]);
+```
+
+```csharp
+typeof(List<object>) == typeof(List<dynamic>);
+```
+
+---
+
+\
+Custom Binding happens when an object implements IDMOP (IDynamicMetaObjectProvider). This allows you to provide an interceptor that captures unresolved method invocations that occur on an object of this type *that has been assigned to a `dynamic` variable.*
+---
+
+```csharp
+using System.Dynamic;
+
+public class Duck : DynamicObject {
+    public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result){
+        Console.WriteLine($"{binder.Name} method was invoked dynamically.");
+        result = null;
+        return true;        
+    }
+
+    public void Quack(){
+        Console.WriteLine("Quack! Quack!");
+    }
+}
+```
+
+```csharp
+dynamic duck = new Duck();
+duck.Quack();
+duck.QuackLoudly();
+```
