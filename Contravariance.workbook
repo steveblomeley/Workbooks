@@ -1,0 +1,113 @@
+---
+uti: com.xamarin.workbook
+id: 788a4d8f-cec2-4e27-b436-44295ed19f94
+title: Contravariance
+platforms:
+- DotNetCore
+---
+
+> ## Contravariance
+>
+> “\*Assuming A is convertible to B, X is **contravariant \*_if X<B> is convertible to X<A>”_
+
+```csharp
+//Let's set up some simple classes to illustrate these points
+class Animal {}
+class Bear : Animal {}
+class Grizzly : Bear {}
+class Camel : Animal {}
+```
+
+**Generic classes**\
+We’ll illustrate the problem with a simple stack implementation - later on we’ll fix this problem using the `out` modifier on a generic interface
+
+```csharp
+class BadStack<T>
+{
+    int position;
+    T[] data = new T[100];
+    public void Push(T obj) { data[position++] = obj; }
+    public T Pop()          { return data[--position]; }
+}
+```
+
+```csharp
+BadStack<Animal> animalStack = new BadStack<Animal>();
+
+//BadStack<Bear> bearStack = animalStack;;
+//error CS0029: Cannot implicitly convert type 'BadStack<Animal>' to 'BadStack<Bear>'
+
+//Which prevents us from doing things like this:
+//animalStack.Push(new Camel);
+//Bear result = bearStack.Pop();
+```
+
+**Using a Generic Interface to isolate the Contravariant aspect of our Stack**\
+We can create an interface to isolate the contravariant part of our stack implementation, and then apply the `in` annotation to the type parameter to signal to the compiler that this complex type behaves contravariantly to its corresponding simple types.
+
+```csharp
+interface IPushable<in T>{ void Push(T item); }
+
+class GoodStack<T> : IPushable<T>
+{
+    int position;
+    T[] data = new T[100];
+    public void Push(T obj) { data[position++] = obj; }
+    public T Pop()          { return data[--position]; }
+}
+```
+
+```csharp
+var goodAnimalStack = new GoodStack<Animal>();
+goodAnimalStack.Push(new Camel());
+IPushable<Bear> goodBearstack = goodAnimalStack; //Contravariance - the conversions allowed for complex types are the opposite of what is allowed for the corresponding simple types
+                                                 //i.e we couldn't perform conversion in the same direction for the simple types: "Bear bear = new Animal();"
+goodBearstack.Push(new Bear());
+```
+
+**How about a List ?**\
+List<T> is **invariant**, as T is used for both input (parameters) and output (return types) - so cannot be annotated as being either one exclusively.
+
+```csharp
+var bearList = new List<Bear>();
+
+//Following lines both give us compiler error "CS0029: Cannot implicitly convert type..."
+//List<Grizzly> grizzlyList = bearList;
+//List<Animal> animalList = bearList;
+```
+
+**What about Funcs?**\
+Consider a Func\<in T1, out T2> - this is clearly contravariant for the input type (parameter), and covariant for the output type.\
+So… how does this stack up in practice?
+
+```csharp
+//Lets start afresh with a new and very basic class hierarchy
+public class A {};
+public class B : A {};
+
+Func<A,A> FuncAA = a => new A();
+Func<A,B> FuncAB = a => new B();
+Func<A,object> FuncAO = a => new object();
+Func<B,A> FuncBA = b => new A();
+Func<object,A> FuncOA = o => new A();
+Func<object,B> FuncOB = o => new B();
+
+public void Tester(Func<A,A> func)
+{
+    A input = new A();
+    A result;
+    result = func(input);
+}
+
+//So now... which of these can we expect to work?
+Tester(FuncAA); //yes - of course
+Tester(FuncAB); //yes - the actual result is a "B", but that's fine, we can assign a "B" to a variable expecting an "A"
+//Tester(FuncBA); //no - the func expects an input of type B, but we're only going to provide an A
+//Tester(FuncAO); //no - the func returns an object, but we expect at least an "A"
+Tester(FuncOA); //yes - the func takes an object, we provide an "A", which *is* an object
+Tester(FuncOB); //yes - here we're taking advantage of both a contravariant input, and a covariant output
+```
+
+**What about Actions?**\
+Actions only have inputs - so they’re contravariant for all of their type parameters.\
+Check out the Contravariance workbook for examples of Actions …

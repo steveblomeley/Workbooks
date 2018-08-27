@@ -1,0 +1,81 @@
+---
+uti: com.xamarin.workbook
+id: 788a4d8f-cec2-4e27-b436-44295ed19f94
+title: Covariance
+platforms:
+- DotNetCore
+---
+
+> ## Covariance
+>
+> “*Assuming A is convertible to B, X is **covariant **if X<A> is convertible to X<B>”*\
+> \
+> **In C# . . .**
+>
+> * Generic classes are **_invariant_**
+>
+> * Arrays are **_covariant_**
+>
+> * Generic interfaces **_support covariance for types marked with the `out` modifier_**
+
+```csharp
+//Let's set up some simple classes to illustrate these points
+class Animal {}
+class Bear : Animal {}
+class Camel : Animal {}
+```
+
+**Generic classes**\
+We’ll illustrate the problem with a simple stack implementation - later on we’ll fix this problem using the `out` modifier on a generic interface
+
+```csharp
+class BadStack<T>
+{
+    int position;
+    T[] data = new T[100];
+    public void Push(T obj) { data[position++] = obj; }
+    public T Pop()          { return data[--position]; }
+}
+```
+
+```csharp
+BadStack<Bear> bearStack = new BadStack<Bear>();
+
+//BadStack<Animal> animalStack = bearStack;
+//error CS0029: Cannot implicitly convert type 'BadStack<Bear>' to 'BadStack<Animal>'
+
+//Which prevents us from doing things like this:
+//animalStack.Push(new Camel);
+```
+
+**Arrays**\
+These are covariant “*for historical reasons*”. Which can lead to runtime errors:
+
+```csharp
+Bear[] bears = new Bear[3];
+Animal[] animals = bears;  //COVARIANCE!!
+
+animals[0] = new Camel();  //But beware of runtime errors
+```
+
+**Generic Interfaces**\
+By using the `out` modifier. we can isolate the covariant part of our stack implementation
+
+```csharp
+interface IPoppable<out T>{ T Pop(); }
+
+class GoodStack<T> : IPoppable<T>
+{
+    int position;
+    T[] data = new T[100];
+    public void Push(T obj) { data[position++] = obj; }
+    public T Pop()          { return data[--position]; }
+}
+```
+
+```csharp
+var goodBearStack = new GoodStack<Bear>();
+goodBearStack.Push(new Bear());
+IPoppable<Animal> goodAnimalStack = goodBearStack;
+goodAnimalStack.Pop();
+```
